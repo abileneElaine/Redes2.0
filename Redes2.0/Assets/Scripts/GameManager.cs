@@ -1,83 +1,95 @@
 using UnityEngine;
 using UnityEngine.UI;
 using System.Collections;
-using TMPro; // importante importar TMP
-
+using TMPro;
 
 public class GameManager : MonoBehaviour
 {
-    public PlayerPiece player1;
-    public PlayerPiece player2;
-    public BoardPath boardPath;
+    public Player jogador1;
+    public Player jogador2;
+    private Player jogadorAtual;
 
-    public Button rollDiceButton;
-    public TMP_Text turnText;
-    public TMP_Text diceText;
+    public TMP_Text textoTurno;
+    public TMP_Text textoDado;
+    public TMP_Text textoPontosJogador1;
+    public TMP_Text textoPontosJogador2;
 
-    private bool isPlayer1Turn = true;
-    private bool isRolling = false;
+    public Button botaoJogar;
+    public GameObject painelVitoria;
+    public TMP_Text textoVitoria;
 
-    private void Start()
+    private bool jogoFinalizado = false;
+
+    void Start()
     {
-        player1.boardPath = boardPath;
-        player2.boardPath = boardPath;
-
-        rollDiceButton.onClick.AddListener(() => StartCoroutine(PlayerTurn()));
-        UpdateUI();
+        jogadorAtual = jogador1;
+        AtualizarTextoTurno();
+        AtualizarTextoPontos();
+        textoDado.text = "Dado: ?";
+        painelVitoria.SetActive(false);
     }
 
-    IEnumerator PlayerTurn()
+    public void JogarDado()
     {
-        if (isRolling) yield break;
+        if (jogoFinalizado) return;
 
-        isRolling = true;
-        rollDiceButton.interactable = false;
+        int resultado = Random.Range(1, 7);
+        textoDado.text = "Dado: " + resultado;
 
-        int diceRoll = Random.Range(1, 7);
-        diceText.text = "Dado: " + diceRoll;
+        jogadorAtual.Mover(resultado);
+        AtualizarTextoPontos();
 
-        yield return StartCoroutine(player1.MoveSteps(diceRoll));
-        yield return new WaitForSeconds(0.5f);
-
-        if (CheckVictory(player1, "Jogador 1")) yield break;
-
-        isPlayer1Turn = false;
-        UpdateUI();
-
-        yield return new WaitForSeconds(1f); // Espera antes da IA jogar
-        StartCoroutine(IATurn());
-    }
-
-    IEnumerator IATurn()
-    {
-        int diceRoll = Random.Range(1, 7);
-        diceText.text = "Dado: " + diceRoll + " (IA)";
-        yield return StartCoroutine(player2.MoveSteps(diceRoll));
-        yield return new WaitForSeconds(0.5f);
-
-        if (CheckVictory(player2, "Jogador 2 (IA)")) yield break;
-
-        isPlayer1Turn = true;
-        UpdateUI();
-        rollDiceButton.interactable = true;
-        isRolling = false;
-    }
-
-    void UpdateUI()
-    {
-        turnText.text = isPlayer1Turn ? "Turno: Jogador 1" : "Turno: IA";
-    }
-
-    bool CheckVictory(PlayerPiece player, string name)
-    {
-        if (player.currentPosition >= boardPath.pathPoints.Count - 1)
+        if (jogadorAtual.pontos >= 20)
         {
-            turnText.text = name + " venceu!";
-            diceText.text = "";
-            rollDiceButton.interactable = false;
-            isRolling = true;
-            return true;
+            textoVitoria.text = jogadorAtual == jogador1 ? "Jogador 1 venceu!" : "Jogador 2 venceu!";
+            painelVitoria.SetActive(true);
+            jogoFinalizado = true;
+            botaoJogar.interactable = false;
+            return;
         }
-        return false;
+
+        StartCoroutine(TrocarTurnoComDelay());
+    }
+
+    IEnumerator TrocarTurnoComDelay()
+    {
+        yield return new WaitForSeconds(1f);
+
+        jogadorAtual = (jogadorAtual == jogador1) ? jogador2 : jogador1;
+        AtualizarTextoTurno();
+
+        if (jogadorAtual == jogador2)
+        {
+            yield return new WaitForSeconds(1f);
+            JogarDado();
+        }
+    }
+
+    void AtualizarTextoTurno()
+    {
+        textoTurno.text = jogadorAtual == jogador1 ? "Vez do Jogador 1" : "Vez do Jogador 2 (IA)";
+    }
+
+    void AtualizarTextoPontos()
+    {
+        textoPontosJogador1.text = "Pontos Jogador 1: " + jogador1.pontos;
+        textoPontosJogador2.text = "Pontos Jogador 2: " + jogador2.pontos;
+    }
+
+    public void ReiniciarJogo()
+    {
+        jogador1.pontos = 0;
+        jogador2.pontos = 0;
+
+        jogador1.transform.position = jogador1.casas[0].position;
+        jogador2.transform.position = jogador2.casas[0].position;
+
+        jogadorAtual = jogador1;
+        jogoFinalizado = false;
+        painelVitoria.SetActive(false);
+        botaoJogar.interactable = true;
+        textoDado.text = "Dado: ?";
+        AtualizarTextoTurno();
+        AtualizarTextoPontos();
     }
 }
